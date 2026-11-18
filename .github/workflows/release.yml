@@ -1,0 +1,42 @@
+# Publishes the theme when a version tag is pushed:
+#   npm version patch && git push --follow-tags
+#
+# Always: a GitHub release with the .vsix attached.
+# Optional, switched on with repository variables (Settings → Secrets and variables → Actions → Variables):
+#   PUBLISH_MARKETPLACE = true  VS Code Marketplace via Trusted Publishing (OIDC), no token. Needs a
+#                               Trusted Publishing policy on the publisher (see CONTRIBUTING.md).
+#   PUBLISH_OPENVSX = true      Open VSX. Needs the repository secret OVSX_PAT.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write # create the GitHub release
+  id-token: write # OIDC token for Marketplace Trusted Publishing
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run package
+      - name: GitHub release
+        run: gh release create "$GITHUB_REF_NAME" *.vsix --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Publish to VS Code Marketplace
+        if: vars.PUBLISH_MARKETPLACE == 'true'
+        run: npx vsce publish --oidc --packagePath *.vsix
+      - name: Publish to Open VSX
+        if: vars.PUBLISH_OPENVSX == 'true'
+        run: npx ovsx publish *.vsix
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}

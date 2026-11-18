@@ -1,0 +1,12 @@
+.github/
+node_modules/
+build.mjs
+*.vsix
+.gitignore
+.oxfmtrc.json
+.oxlintrc.json
+images
+# README screenshots load from GitHub; only the icon ships in the package.
+images/**
+!images/icon.png
+CONTRIBUTING.md

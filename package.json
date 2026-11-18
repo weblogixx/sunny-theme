@@ -1,0 +1,70 @@
+{
+  "name": "sunny-theme",
+  "displayName": "Sunny",
+  "version": "0.0.1",
+  "description": "Sunny is a 70s inspired orange/yellow based theme, available in mixed (light UI, dark editor), dark and light versions.",
+  "categories": [
+    "Themes"
+  ],
+  "keywords": [
+    "color-theme",
+    "dark",
+    "light",
+    "mixed",
+    "retro",
+    "theme",
+    "yellow"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/weblogixx/sunny-theme"
+  },
+  "publisher": "weblogixx",
+  "scripts": {
+    "build": "node build.mjs",
+    "vscode:prepublish": "node build.mjs",
+    "package": "vsce package",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "check": "oxlint && oxfmt --check && vsce package --out /tmp/sunny-check.vsix"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^4.1.1",
+    "ovsx": "^1.4.0",
+    "oxfmt": "^0.79.0",
+    "oxlint": "^1.94.0"
+  },
+  "contributes": {
+    "themes": [
+      {
+        "label": "Sunny Mixed",
+        "uiTheme": "vs-dark",
+        "path": "./themes/sunny-mixed.json"
+      },
+      {
+        "label": "Sunny Dark",
+        "uiTheme": "vs-dark",
+        "path": "./themes/sunny-dark.json"
+      },
+      {
+        "label": "Sunny Light",
+        "uiTheme": "vs",
+        "path": "./themes/sunny-light.json"
+      }
+    ]
+  },
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#FDB515",
+    "theme": "light"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "allowScripts": {
+    "@vscode/vsce-sign@2.1.1": true
+  }
+}
