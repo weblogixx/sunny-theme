@@ -1,5 +1,5 @@
 // Generates the Sunny VS Code themes from the site's OKLCH tokens (src/styles/sunny.css).
-// Run: node build.mjs  → writes themes/*.json
+// Run: node build.mjs  → writes themes/*.json and iterm/*.itermcolors
 import { writeFileSync, mkdirSync } from 'node:fs';
 
 // Sunny defaults (primary yellow, accent red), same as --p-* / --a-* in sunny.css
@@ -90,6 +90,31 @@ function syntax(mode) {
     property: c(0.86, 0.38, 0.05, P.h), // warm tan
     comment: c(0.6, 0.55, P.c * 0.15, P.h),
   };
+}
+
+/**
+ * Terminal ANSI colors (VS Code terminal and iTerm). Mostly the syntax hues, but the terminal
+ * paints big areas in blue (folders in `ls`), so blue is its own calmer hue, clearly apart from
+ * cyan. Bright = a step further from the background (lighter in dark mode, darker in light), so
+ * bold and "bright" output stand out.
+ */
+function ansi(mode) {
+  const dark = mode === 'dark';
+  const base = {
+    Red: [dark ? 0.72 : 0.55, A.c, A.h],
+    Green: [dark ? 0.8 : 0.5, 0.12, 128],
+    Yellow: [dark ? P.l : 0.52, P.c, P.h],
+    Blue: [dark ? 0.7 : 0.48, 0.09, 250],
+    Magenta: [dark ? 0.78 : 0.5, 0.11, 320],
+    Cyan: [dark ? 0.82 : 0.52, 0.11, 185],
+  };
+  const step = dark ? 0.08 : -0.08;
+  const out = {};
+  for (const [name, [l, c, h]] of Object.entries(base)) {
+    out[name] = oklch(l, c, h);
+    out[`Bright${name}`] = oklch(Math.min(0.95, l + step), c, h);
+  }
+  return out;
 }
 
 const t = (scope, foreground, fontStyle) => ({
@@ -240,7 +265,7 @@ function theme(name, uiMode, edMode) {
   const ui = neutrals(uiMode);
   const ed = neutrals(edMode);
   const s = syntax(edMode);
-  const ps = syntax(uiMode); // terminal colors
+  const term = ansi(uiMode);
   // Mixed: a light line next to the dark editor reads as a hard seam, so borders that touch
   // the editor blend into the chrome instead.
   const mixed = uiMode !== edMode;
@@ -414,20 +439,20 @@ function theme(name, uiMode, edMode) {
       'terminal.foreground': ui.text,
       'terminalCursor.foreground': fill,
       'terminal.ansiBlack': ui.surface2,
-      'terminal.ansiRed': ps.operator,
-      'terminal.ansiGreen': ps.string,
-      'terminal.ansiYellow': ps.keyword,
-      'terminal.ansiBlue': ps.func,
-      'terminal.ansiMagenta': ps.type,
-      'terminal.ansiCyan': ps.escape,
+      'terminal.ansiRed': term.Red,
+      'terminal.ansiGreen': term.Green,
+      'terminal.ansiYellow': term.Yellow,
+      'terminal.ansiBlue': term.Blue,
+      'terminal.ansiMagenta': term.Magenta,
+      'terminal.ansiCyan': term.Cyan,
       'terminal.ansiWhite': ui.muted,
       'terminal.ansiBrightBlack': ui.subtle,
-      'terminal.ansiBrightRed': ps.operator,
-      'terminal.ansiBrightGreen': ps.string,
-      'terminal.ansiBrightYellow': ps.keyword,
-      'terminal.ansiBrightBlue': ps.func,
-      'terminal.ansiBrightMagenta': ps.type,
-      'terminal.ansiBrightCyan': ps.escape,
+      'terminal.ansiBrightRed': term.BrightRed,
+      'terminal.ansiBrightGreen': term.BrightGreen,
+      'terminal.ansiBrightYellow': term.BrightYellow,
+      'terminal.ansiBrightBlue': term.BrightBlue,
+      'terminal.ansiBrightMagenta': term.BrightMagenta,
+      'terminal.ansiBrightCyan': term.BrightCyan,
       'terminal.ansiBrightWhite': ui.text,
 
       'gitDecoration.modifiedResourceForeground': ui.primary,
@@ -446,15 +471,73 @@ function theme(name, uiMode, edMode) {
   };
 }
 
+// --- iTerm2 color presets, from the same colors as the VS Code terminal ------
+const hexRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+/** `#rrggbbaa` composited over an opaque background: iTerm ignores alpha on most colors. */
+const over = (hex, bg) => {
+  const a = hex.length === 9 ? parseInt(hex.slice(7), 16) / 255 : 1;
+  const [f, b] = [hexRgb(hex), hexRgb(bg)];
+  return f.map((v, i) => v * a + b[i] * (1 - a));
+};
+const plistColor = ([r, g, b], alpha = 1) =>
+  `\t<dict>
+\t\t<key>Alpha Component</key><real>${alpha}</real>
+\t\t<key>Blue Component</key><real>${b.toFixed(6)}</real>
+\t\t<key>Color Space</key><string>sRGB</string>
+\t\t<key>Green Component</key><real>${g.toFixed(6)}</real>
+\t\t<key>Red Component</key><real>${r.toFixed(6)}</real>
+\t</dict>`;
+
+function itermColors(c) {
+  const bg = c['terminal.background'];
+  const names = ['Black', 'Red', 'Green', 'Yellow', 'Blue', 'Magenta', 'Cyan', 'White'];
+  const entries = {
+    ...Object.fromEntries(
+      names.flatMap((n, i) => [
+        [`Ansi ${i} Color`, hexRgb(c[`terminal.ansi${n}`])],
+        [`Ansi ${i + 8} Color`, hexRgb(c[`terminal.ansiBright${n}`])],
+      ]),
+    ),
+    'Background Color': hexRgb(bg),
+    'Foreground Color': hexRgb(c['terminal.foreground']),
+    'Bold Color': hexRgb(c['terminal.ansiBrightWhite']),
+    'Cursor Color': hexRgb(c['terminalCursor.foreground']),
+    'Cursor Text Color': hexRgb(bg),
+    // Same yellow tint as the editor selection, pre-blended (iTerm draws selections opaque).
+    'Selection Color': over(c['editor.selectionBackground'], bg),
+    'Selected Text Color': hexRgb(c['terminal.foreground']),
+    'Link Color': hexRgb(c['terminal.ansiBlue']),
+    'Badge Color': [...hexRgb(c['terminalCursor.foreground'])],
+    'Cursor Guide Color': over(c['editor.selectionBackground'], bg),
+  };
+  const alpha = { 'Badge Color': 0.5, 'Cursor Guide Color': 0.25 };
+  const body = Object.entries(entries)
+    .toSorted(([a], [b]) => a.localeCompare(b))
+    .map(([k, v]) => `\t<key>${k}</key>\n${plistColor(v, alpha[k] ?? 1)}`)
+    .join('\n');
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+${body}
+</dict>
+</plist>
+`;
+}
+
 mkdirSync(new URL('./themes/', import.meta.url), { recursive: true });
+mkdirSync(new URL('./iterm/', import.meta.url), { recursive: true });
 for (const [file, name, ui, ed] of [
   ['sunny-mixed', 'Sunny Mixed', 'light', 'dark'],
   ['sunny-dark', 'Sunny Dark', 'dark', 'dark'],
   ['sunny-light', 'Sunny Light', 'light', 'light'],
 ]) {
-  writeFileSync(
-    new URL(`./themes/${file}.json`, import.meta.url),
-    JSON.stringify(theme(name, ui, ed), null, 2),
-  );
+  const json = theme(name, ui, ed);
+  writeFileSync(new URL(`./themes/${file}.json`, import.meta.url), JSON.stringify(json, null, 2));
   console.log(`themes/${file}.json`);
+  // Mixed has a light terminal, same as Light: no separate preset.
+  if (file !== 'sunny-mixed') {
+    writeFileSync(new URL(`./iterm/${file}.itermcolors`, import.meta.url), itermColors(json.colors));
+    console.log(`iterm/${file}.itermcolors`);
+  }
 }

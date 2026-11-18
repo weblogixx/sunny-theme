@@ -10,3 +10,4 @@ images
 images/**
 !images/icon.png
 CONTRIBUTING.md
+iterm/

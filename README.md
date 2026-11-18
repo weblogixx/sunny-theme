@@ -14,6 +14,14 @@
 2. In VS Code, run **Extensions: Install from VSIX…** and pick the file.
 3. Run **Preferences: Color Theme** and pick Sunny Dark, Sunny Light or Sunny Mixed.
 
+### iTerm2
+
+The same terminal colors as a preset: [`iterm/sunny-dark.itermcolors`](iterm/sunny-dark.itermcolors)
+and [`iterm/sunny-light.itermcolors`](iterm/sunny-light.itermcolors).
+
+1. Download the file and double-click it. iTerm2 imports it as a color preset.
+2. In **Settings → Profiles → Colors → Color Presets…**, pick Sunny Dark or Sunny Light.
+
 ## Screenshots
 
 ### Sunny Dark
